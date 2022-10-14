@@ -1,0 +1,99 @@
+#
+# SELinux code validation workflow
+#
+name: "Validate SELinux code"
+
+on:
+  workflow_dispatch:
+  
+  push:
+    paths:
+      - '**.te'
+      - '**.fc'
+      - '**.if'
+    tags-ignore:
+      - v*
+      
+  pull_request:
+    branches: [ "main", "release/**" ]
+    paths:
+      - '**.te'
+      - '**.fc'
+      - '**.if'
+
+env:
+  SEMODULE: springboot
+
+jobs:
+
+  compile:
+    name: Validate SELinux code
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hubertqc/selinux_compile@main
+  
+  semodule_info:
+    name: Get SELinux module informations
+    needs: compile
+      
+    runs-on: ubuntu-latest
+
+    if: ( github.event_name == 'push' && ( github.ref_name == 'main' || startsWith(github.ref_name, 'release/') ) )
+    
+    permissions:
+      actions: read
+      contents: read
+
+    outputs:
+      semodule_name: ${{ steps.semodule_chars.outputs.semodule_name }}
+      semodule_vers: ${{ steps.semodule_chars.outputs.semodule_vers }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get SELinux policy module characteristics
+        id: semodule_chars
+        run: |
+          awk '
+          /^[[:blank:]]*module[[:blank:]]+/ {
+            sub("[[:blank:]]*;$", "")
+            module_name=$2
+            module_vers=$3
+          }
+          /^[[:blank:]]*policy_module[[:blank:]]*\(/ {
+            sub("^[[:blank:]]*policy_module[[:blank:]]*[(][[:blank:]]*", "")
+            sub("[[:blank:]]*)[[:blank:]]*$", "")
+            split($0, a, "[[:blank:]]*,[[:blank:]]*")
+            module_name=a[1]
+            module_vers=a[2]
+          }
+          END {
+            print "::set-output name=semodule_name::"module_name
+            print "::set-output name=semodule_vers::"module_vers
+          }' se_module/${SEMODULE}.te
+
+
+  add_tag:
+    name: Add SELinux module version tag on the branch
+    needs: semodule_info
+
+    runs-on: ubuntu-latest
+
+    if: ( github.event_name == 'push' && ( github.ref_name == 'main' || startsWith(github.ref_name, 'release/') ) )
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Tag the branch with the SELinux module version and draft a pre-release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.semodule_info.outputs.semodule_vers }}-candidate
+          release_name: Release v${{ needs.semodule_info.outputs.semodule_vers }} candidate
+          draft: true
+          prerelease: true
+      

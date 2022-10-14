@@ -1,5 +1,8 @@
-policy_module(node_exporter)
-
+policy_module(node_exporter,0.0.1)
+	gen_require(`
+		type var_t, var_run_t;
+		attribute pidfile;
+	')
 ########################################
 #
 # Declarations
@@ -10,7 +13,10 @@ type node_exporter_exec_t;
 init_daemon_domain(node_exporter_t, node_exporter_exec_t)
 
 type node_exporter_runtime_t;
-files_runtime_file(node_exporter_runtime_t)
+###The following macro is not present in RHEL 7/8 policy so we've expanded it here
+###files_runtime_file(node_exporter_runtime_t)
+files_type(node_exporter_runtime_t)
+typeattribute node_exporter_runtime_t pidfile;
 
 type node_exporter_var_lib_t;
 files_type(node_exporter_var_lib_t)
@@ -34,7 +40,11 @@ allow node_exporter_t self:tcp_socket create_stream_socket_perms;
 allow node_exporter_t self:udp_socket create_socket_perms;
 
 manage_files_pattern(node_exporter_t, node_exporter_runtime_t, node_exporter_runtime_t)
-files_runtime_filetrans(node_exporter_t, node_exporter_runtime_t, file)
+###The following macro is not present in RHEL 7/8 policy so we've expanded it here
+###files_runtime_filetrans(node_exporter_t, node_exporter_runtime_t, file)
+allow node_exporter_t var_t:dir search_dir_perms;
+allow node_exporter_t var_run_t:lnk_file read_lnk_file_perms;
+filetrans_pattern(node_exporter_t, var_run_t, node_exporter_runtime_t, file)
 
 manage_dirs_pattern(node_exporter_t, node_exporter_var_lib_t, node_exporter_var_lib_t)
 manage_files_pattern(node_exporter_t, node_exporter_var_lib_t, node_exporter_var_lib_t)

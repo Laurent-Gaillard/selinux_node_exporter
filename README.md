@@ -4,13 +4,13 @@ https://github.com/Laurent-Gaillard/selinux_node_exporter
 
 ## Introduction
 
-This SELinux policy module is a backport of the Node Exporter module that is included in
+This SELinux policy module is a backport of the Node Exporter module included in
 newer versions of the refpolicy (https://github.com/SELinuxProject/refpolicy). It will allow 
 people with older versions (this is the case on RHEL 7 and 8) of the policy to manage SELinux 
 for Node Exporter easily.
 
 When used correctly, this SELinux policy module will make the Node Exporter application
-run on the host in the dedicated *node_exporter_t* SELinux domain.
+runs in the dedicated *node_exporter_t* SELinux domain.
 
 The original module was customized to create a *node_exporter_port_t* port type and allow 
 *node_exporter_t* domain to listen to it.
@@ -34,15 +34,14 @@ The root directory for log files of the Node Exporter application is expected to
 
 The persistent data modified by the application must be in /var/lib/node_exporter and its subdirectories.
 
-And finaly, the pid file must be /run/node_exporter.pid.
+Finaly, if you want to use a pid file, it must be /run/node_exporter.pid.
 
 ### Networking
 
 #### Default Listening ports
-By default Node Exporter is configured to listen on port 9100 (which ).
-In the refpolicy module, no port type was explicitly defined for node exporter.
+By default Node Exporter is configured to listen on port 9100.
+In the refpolicy module, no port type was explicitly defined for Node Exporter.
 
-By default, Node Exporter listens on port 9100. 
 For this to work, the original SELinux Node Exporter module supports binding on port labeled *hplip_port_t*.
 This means that it can listen on all the following tcp ports: 
 - 1782
@@ -72,20 +71,20 @@ This prevents anyother application authorized to connect / listen to *hplip_port
 So if you need the application to run on another port you must just add with **semanage** command your tcp port to *node_exporter_port_t* type:
 > semanage port -a -t node_exporter_port_t -p tcp \<PORT\>
 
-### Starting the Springboot application
+### Starting the Node Exporter application
 
-The Springboot application should always and ony be started as a **systemd** service using
+The Node Exporter application should always and only be started as a **systemd** service using
 the`systemctl` command.
 
-The service or target unit files MUST be located in /etc/systemd/system or in
-/lib/systemd/system, the file name MUST start with `springboot`.
-Directories to tune or override unit behaviour are supported.
-Template/instantiated units are supported provided the master file is named
-`springboot@.service`.
+This method ensures that Node Exporter is running in a confined domain.
 
-The script(s) used to start or stop the Springboot application MUST be located in the 
-/opt/springboot/service/ directory. The /opt/springboot/bin/springboot_service file name
-is also supported.
+To create a systemd unit for Node Exporter, you can have a look at:
+https://github.com/prometheus/node_exporter/tree/master/examples/systemd
+
+The service or target unit files MUST be located in /etc/systemd/system or in /lib/systemd/system.
+
+When started correctly, your Node Exporter process must be running like that ("ps -efZ" is your best friend):
+system_u:system_r:**node_exporter_t**:SystemLow node_exporter 9796  1  0 17:48 ?        00:00:00 /usr/sbin/node_exporter
 
 ## Disclaimer
 

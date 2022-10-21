@@ -24,9 +24,13 @@ files_type(node_exporter_var_lib_t)
 type node_exporter_log_t;
 logging_log_file(node_exporter_log_t)
 
-#Not in original module from refpolicy
-type		node_exporter_port_t;
+###Not in original module from refpolicy
+#Create dedicated network port type
+type node_exporter_port_t;
 corenet_port(node_exporter_port_t)
+
+#Create a boolean to remove usage of hplip_port_t
+bool strict_node_exporter_network_rules false;
 
 ########################################
 #
@@ -55,9 +59,11 @@ create_files_pattern(node_exporter_t, node_exporter_log_t, node_exporter_log_t)
 setattr_files_pattern(node_exporter_t, node_exporter_log_t, node_exporter_log_t)
 logging_log_filetrans(node_exporter_t, node_exporter_log_t, { dir file })
 
-# Also uses port 9100
-corenet_tcp_bind_hplip_port(node_exporter_t)
 corenet_tcp_bind_generic_node(node_exporter_t)
+# Also uses port 9100
+if	( ! strict_node_exporter_network_rules )	{
+  corenet_tcp_bind_hplip_port(node_exporter_t)
+}
 #Not in original module from refpolicy. We allow node_exporter_t to bind to a node_exporter_port_t to allow port customization
 allow node_exporter_t node_exporter_port_t:tcp_socket name_bind;
 
